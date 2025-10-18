@@ -12,6 +12,11 @@ A comprehensive full-stack NFT rental marketplace built with Solidity, Foundry, 
 - **Secure Escrow**: Funds are held safely until rental completion
 - **Protocol Fees**: Configurable fee structure with automatic distribution
 
+### Dual-Role Participation
+- **Rent and Earn**: Users can simultaneously rent NFTs and earn by listing their own NFTs
+- **Mint-to-Earn**: NFT creators can mint new tokens and list them for rental income
+- **Flexible Marketplace**: Users participate as both renters and owners seamlessly
+
 ### Royalty Support
 - **ERC-2981 Compatible**: Standard royalty implementation for secondary sales
 - **Configurable Rates**: Default 5% royalty to original creators
@@ -24,52 +29,9 @@ A comprehensive full-stack NFT rental marketplace built with Solidity, Foundry, 
 
 ---
 
-## 🎨 Frontend Experiences
+## 🎨 Frontend Status
 
-#### Public Browsing (No Wallet Required)
-- **Browse Homepage**: View featured listings, marketplace stats, and "How It Works" guide
-- **Explore Listings**: Filter by collection, price range, and search for specific NFTs
-- **View NFT Details**: See metadata, pricing, availability, and rental terms for any NFT
-
-#### Wallet Integration
-- **Multi-Wallet Support**: MetaMask, WalletConnect, Coinbase Wallet, and more
-- **Network Switching**: Switch between Base and Polygon networks
-- **Account Management**: View connected address and network status
-
-#### NFT Owners (Asset Management)
-- **Create Listings**: List NFTs for rental with custom pricing, duration limits, and deposits
-- **Manage Listings**: View all owned listings with status (active/inactive)
-- **Edit Listings**: Update pricing, durations, and terms for existing listings
-- **Cancel Listings**: Remove listings from the marketplace
-- **Track Earnings**: View rental income and transaction history
-- **Approve NFTs**: Grant marketplace permission to manage NFT rentals
-
-#### NFT Renters (Rental Experience)
-- **Browse Available NFTs**: Discover rentable assets across collections
-- **Calculate Costs**: Real-time pricing with duration selection and cost breakdown
-- **Rent NFTs**: Secure rental transactions with automatic escrow
-- **View Active Rentals**: Track current rentals with live countdown timers
-- **Rental History**: View past rentals with transaction receipts and links
-- **Conflict Prevention**: Automatic prevention of double-bookings
-
-#### Dashboard & Analytics
-- **Owner Dashboard**: Comprehensive view of listings, earnings, and management tools
-- **Renter Dashboard**: Active rentals and complete transaction history
-- **Account Overview**: Connected wallet and network status
-- **Transaction Tracking**: Links to blockchain explorers for all transactions
-
-#### Real-time Features
-- **Live Cost Calculation**: Instant pricing updates as users adjust rental periods
-- **Countdown Timers**: Real-time countdown for active rentals
-- **Status Updates**: Immediate reflection of rental status changes
-- **Network Awareness**: Automatic adaptation to connected blockchain network
-
-#### User Interface
-- **Responsive Design**: Works perfectly on desktop, tablet, and mobile
-- **Loading States**: Smooth loading indicators and skeleton screens
-- **Error Boundaries**: Graceful error handling with retry options
-- **Toast Notifications**: Real-time feedback for all user actions
-- **Optimistic Updates**: UI updates immediately after successful transactions
+**Note: Frontend is under active development. Smart contract functionality is complete and tested.**
 
 ---
 
@@ -162,7 +124,7 @@ forge test
 - Access control validation
 
 ### Frontend Application
-Run the development server:
+Frontend is under development. Run the development server:
 ```bash
 cd frontend
 npm run dev
