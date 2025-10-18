@@ -176,4 +176,38 @@ contract RentalManagerTest is Test {
         vm.expectRevert("RentalManager: duration out of range");
         rentalManager.rent{value: 0.6 ether}(address(nft), tokenId, start, end);
     }
+    
+    function testRentAtCurrentTimestamp() public {
+        uint256 start = block.timestamp; // Rent starting at current time
+        uint256 end = start + 3600; // 1 hour
+        ListingManager.Listing memory listing = listingManager.getListing(address(nft), tokenId);
+        uint256 total = 3600 * listing.pricePerSecond + listing.deposit;
+
+        vm.prank(renter);
+        rentalManager.rent{value: total}(address(nft), tokenId, start, end);
+
+        RentalManager.Rental[] memory rs = rentalManager.getRentals(address(nft), tokenId);
+        assertEq(rs.length, 1);
+        assertEq(rs[0].start, start);
+        assertEq(rs[0].end, end);
+    }
+    
+    function testRentStartTimeInPast() public {
+        // Warp to ensure we have a reasonable timestamp
+        vm.warp(1000000); // Set a reasonable timestamp value
+        vm.deal(renter, 2 ether);
+        // Test start time in the past - this should fail with "invalid times" because start >= block.timestamp
+        vm.expectRevert("RentalManager: invalid times");
+        vm.prank(renter);
+        rentalManager.rent{value: 1.1 ether}(address(nft), tokenId, 999900, 1000100); // Past start time
+    }
+    
+    function testRentEndBeforeStart() public {
+        vm.warp(1000000); // Ensure we have a reasonable timestamp
+        vm.deal(renter, 2 ether);
+        // Test end before start - this should fail with "invalid times" because start < end
+        vm.expectRevert("RentalManager: invalid times");
+        vm.prank(renter);
+        rentalManager.rent{value: 1.1 ether}(address(nft), tokenId, 1000200, 1000100); // end < start
+    }
 }
