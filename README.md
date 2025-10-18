@@ -1,13 +1,6 @@
 # NFT Rental Marketplace
 
-A comprehensive full-stack E#### Dashboard & Analytics
-- **Owner Dashboard**: Comprehensive view of listings, earnings, and management tools
-- **Renter Dashboard**: Active rentals and complete transaction history
-- **Account Overvie**For Renters:**
-1. Browse available NFT listings
-2. Select rental duration and pay for rental
-3. Receive temporary access to the NFTConnected wallet and network status
-- **Transaction Tracking**: Links to blockchain explorers for all transactionsd NFT rental marketplace built with Solidity, Foundry, Next.js, and TypeScript. This platform enables NFT owners to list their assets for time-based rentals while providing renters with temporary access to exclusive digital assets.
+A comprehensive full-stack NFT rental marketplace built with Solidity, Foundry, Next.js, and TypeScript. This platform enables NFT owners to list their assets for time-based rentals while providing renters with temporary access to exclusive digital assets.
 
 ---
 
@@ -105,12 +98,6 @@ A comprehensive full-stack E#### Dashboard & Analytics
 - Secure fund holding during rentals
 - Protocol fee calculation and distribution
 - Release mechanisms for owners and renters
-
-#### SubPass1155.sol
-- ERC-1155 based subscription system
-- Time-based membership tracking
-- Soulbound transfer restrictions
-- Multi-tier support
 
 ---
 
@@ -232,7 +219,6 @@ NEXT_PUBLIC_RENTABLE_721_BASE=0x5fbdb2315678afecb367f032d93f642f64180aa3
 NEXT_PUBLIC_LISTING_MANAGER_BASE=0xe7f1725e7734ce288f8367e1bb143e90bb3f0512
 NEXT_PUBLIC_RENTAL_MANAGER_BASE=0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0
 NEXT_PUBLIC_ESCROW_BASE=0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9
-NEXT_PUBLIC_SUB_PASS_1155_BASE=0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
 ```
 
 
