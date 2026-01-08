@@ -18,7 +18,6 @@ contract IntegrationTest is Test {
     address other = makeAddr("other");
     address feeRecipient = makeAddr("feeRecipient");
     uint256 tokenId = 1;
-    uint256 tierId = 1;
 
     function setUp() public {
         vm.startPrank(owner);
@@ -61,7 +60,14 @@ contract IntegrationTest is Test {
         vm.prank(renter);
         rentalManager.rent{value: total}(address(rentable), tokenId, start, end);
 
-        // Check user assigned
+        // Check user assigned (Not assigned yet because it's future)
+        assertEq(rentable.userOf(tokenId), address(0));
+
+        // Warp to start and CheckIn
+        vm.warp(start);
+        vm.prank(renter);
+        rentalManager.checkIn(1);
+        
         assertEq(rentable.userOf(tokenId), renter);
 
         // Fast-forward to end
@@ -69,13 +75,14 @@ contract IntegrationTest is Test {
 
         // Finalize rental
         vm.prank(renter); // Anyone can finalize
-        rentalManager.finalize(1, address(rentable), tokenId);
+        rentalManager.finalize(1);
 
         // Check payouts: owner gets cost - fee, renter gets deposit
         uint256 fee = cost * 500 / 10000; // 5%
-        assertEq(owner.balance, cost - fee);
-        assertEq(renter.balance, 10 ether - total + deposit); // Refunded deposit
-        assertEq(feeRecipient.balance, fee);
+        
+        assertEq(escrow.userBalances(owner), cost - fee);
+        assertEq(escrow.userBalances(renter), deposit);
+        assertEq(escrow.userBalances(feeRecipient), fee);
 
         // User cleared
         assertEq(rentable.userOf(tokenId), address(0));
@@ -91,6 +98,10 @@ contract IntegrationTest is Test {
 
         vm.prank(renter);
         rentalManager.rent{value: 1 ether}(address(rentable), tokenId, start, end);
+
+        vm.warp(start);
+        vm.prank(renter);
+        rentalManager.checkIn(1);
 
         // At exact end - 1 second, still active
         vm.warp(end - 1);
@@ -110,9 +121,16 @@ contract IntegrationTest is Test {
         vm.prank(owner);
         listingManager.createListing(address(rentable), tokenId, 277777777777777, 3600, 86400, 0.1 ether, bytes32(0));
 
+        // Calculate exact cost
+        uint256 start = block.timestamp + 100;
+        uint256 end = start + 3700; // 1 hour
+        uint256 cost = 277777777777777 * 3600; 
+        uint256 total = cost + 0.1 ether;
+
         vm.prank(renter);
         vm.expectRevert("RentalManager: insufficient payment");
-        rentalManager.rent{value: 0.5 ether}(address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700);
+        // Send less than total
+        rentalManager.rent{value: total - 1}(address(rentable), tokenId, start, end);
     }
 
     // 4. Cross-Contract: Escrow Integration
@@ -121,22 +139,24 @@ contract IntegrationTest is Test {
         listingManager.createListing(address(rentable), tokenId, 277777777777777, 3600, 86400, 0.1 ether, bytes32(0));
 
         vm.prank(renter);
-        uint256 expectedCost = 277777777777777 * 3600; // Approximately 1 ether minus rounding
+        uint256 expectedCost = 277777777777777 * 3600; 
         uint256 expectedTotal = expectedCost + 0.1 ether;
         rentalManager.rent{value: expectedTotal}(
             address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700
         );
 
-        // Funds in escrow
+        // Funds in escrow (in rentalDeposits)
+        assertEq(escrow.rentalDeposits(1), expectedTotal);
         assertEq(address(escrow).balance, expectedTotal);
 
         // After finalize
         vm.warp(block.timestamp + 3800);
         vm.prank(renter);
-        rentalManager.finalize(1, address(rentable), tokenId);
+        rentalManager.finalize(1);
 
-        // Escrow empty
-        assertEq(address(escrow).balance, 0);
+        // Escrow Balance should still be expectedTotal (moves to user balances, not withdrawn)
+        assertEq(address(escrow).balance, expectedTotal);
+        assertEq(escrow.rentalDeposits(1), 0);
     }
 
     // 5. Cross-Contract: Royalty on Transfer
@@ -161,9 +181,15 @@ contract IntegrationTest is Test {
         vm.prank(owner);
         listingManager.createListing(address(rentable), tokenId, 277777777777777, 3600, 86400, 0, bytes32(0));
 
+        uint256 start = block.timestamp + 100;
+
         // Rent NFT
         vm.prank(renter);
-        rentalManager.rent{value: 1 ether}(address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700);
+        rentalManager.rent{value: 1 ether}(address(rentable), tokenId, start, start + 3600);
+
+        vm.warp(start);
+        vm.prank(renter);
+        rentalManager.checkIn(1);
 
         // Verify rental
         assertEq(rentable.userOf(tokenId), renter);
@@ -189,7 +215,13 @@ contract IntegrationTest is Test {
         vm.prank(other);
         rentalManager.rent{value: 1 ether}(address(rentable), 2, block.timestamp + 100, block.timestamp + 3700);
 
-        // Check both rented
+        // Check assigned (need to checkin)
+        vm.warp(block.timestamp + 100);
+        vm.prank(renter);
+        rentalManager.checkIn(1);
+        vm.prank(other);
+        rentalManager.checkIn(2);
+
         assertEq(rentable.userOf(tokenId), renter);
         assertEq(rentable.userOf(2), other);
     }
@@ -199,8 +231,13 @@ contract IntegrationTest is Test {
         vm.prank(owner);
         listingManager.createListing(address(rentable), tokenId, 277777777777777, 3600, 86400, 0, bytes32(0));
 
+        uint256 start = block.timestamp + 100;
         vm.prank(renter);
-        rentalManager.rent{value: 1 ether}(address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700);
+        rentalManager.rent{value: 1 ether}(address(rentable), tokenId, start, start + 3600);
+
+        vm.warp(start);
+        vm.prank(renter);
+        rentalManager.checkIn(1);
 
         // Attempt transfer
         vm.prank(owner);

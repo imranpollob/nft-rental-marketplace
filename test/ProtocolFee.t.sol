@@ -5,164 +5,150 @@ import "forge-std/Test.sol";
 import "../src/RentalManager.sol";
 import "../src/ListingManager.sol";
 import "../src/Rentable721.sol";
+import "../src/Escrow.sol";
 
 contract ProtocolFeeTest is Test {
-    RentalManager rentalManager;
+    RentalManager tenPercentManager;
+    RentalManager zeroPercentManager;
+    RentalManager twentyFivePercentManager;
     ListingManager listingManager;
     Rentable721 nft;
-    address owner;
-    address renter;
-    address feeRecipient;
-    address other;
+    Escrow escrow;
+
+    address owner = makeAddr("owner");
+    address renter = makeAddr("renter");
+    address feeRecipient = makeAddr("feeRecipient");
     uint256 tokenId = 1;
 
     function setUp() public {
-        owner = makeAddr("owner");
-        renter = makeAddr("renter");
-        feeRecipient = makeAddr("feeRecipient");
-        other = makeAddr("other");
         vm.deal(address(this), 100 ether);
         vm.deal(renter, 100 ether);
-        vm.deal(other, 100 ether);
-        
+
+        vm.prank(owner);
+        listingManager = new ListingManager();
+
+        vm.prank(owner);
+        tenPercentManager = new RentalManager(address(listingManager), feeRecipient, 1000); // 10%
+        vm.prank(owner);
+        zeroPercentManager = new RentalManager(address(listingManager), feeRecipient, 0); // 0%
+        vm.prank(owner);
+        twentyFivePercentManager = new RentalManager(address(listingManager), feeRecipient, 2500); // 25%
+
         vm.prank(owner);
         nft = new Rentable721();
-        listingManager = new ListingManager();
+
+        vm.prank(owner);
+        nft.mint(owner, 1);
+        vm.prank(owner);
+        nft.mint(owner, 2);
+        vm.prank(owner);
+        nft.mint(owner, 3);
+        
+        // Approvals
+        vm.prank(owner);
+        nft.setApprovalForAll(address(tenPercentManager), true);
+        vm.prank(owner);
+        nft.setApprovalForAll(address(zeroPercentManager), true);
+        vm.prank(owner);
+        nft.setApprovalForAll(address(twentyFivePercentManager), true);
+
+        // We have to set marketplace one by one or allow multiple?
+        // Rentable721 has single `marketplace` address that can `setUser`.
+        // This test deployment strategy is flawed if we want to test multiple managers against SAME nft contract...
+        // But the failing tests were just about balances.
+        // Actually `rent` calls `nft.setUser`. If `nft.marketplace` is not the specific manager calling `rent`, it will REVERT.
+        // The previous tests probably set marketplace before each test or used one marketplace?
+        // Ah, `Rentable721` only allows ONE marketplace address.
+        // So for these tests we might need separate NFT contracts or re-set marketplace in each test function?
+        // Or just set it to the one we are testing.
         
         vm.prank(owner);
-        nft.setMarketplace(address(rentalManager)); // This will be set after rentalManager is created
+        listingManager.createListing(address(nft), 1, 1 gwei, 3600, 86400, 0.1 ether, bytes32(0));
+        vm.prank(owner);
+        listingManager.createListing(address(nft), 2, 1 gwei, 3600, 86400, 0.1 ether, bytes32(0));
+        vm.prank(owner);
+        listingManager.createListing(address(nft), 3, 1 gwei, 3600, 86400, 0.1 ether, bytes32(0));
     }
 
     function testProtocolFeeWith10Percent() public {
-        // Create RentalManager with 10% fee (1000 basis points)
-        RentalManager tenPercentManager = new RentalManager(address(listingManager), feeRecipient, 1000); // 10% fee
-        
         vm.prank(owner);
         nft.setMarketplace(address(tenPercentManager));
 
-        vm.prank(owner);
-        nft.mint(owner, tokenId);
-
-        vm.prank(owner);
-        nft.setApprovalForAll(address(tenPercentManager), true);
-
-        vm.prank(owner);
-        listingManager.createListing(address(nft), tokenId, uint256(1 ether) / 3600, 3600, 86400, 0.1 ether, bytes32(0)); // 1 eth/hour
-
         uint256 start = block.timestamp + 100;
-        uint256 end = start + 3600; // 1 hour rental
-        ListingManager.Listing memory listing = listingManager.getListing(address(nft), tokenId);
-        uint256 cost = 3600 * listing.pricePerSecond; // 1 ether for 1 hour
-        uint256 total = cost + listing.deposit;
-
-        // Record balances before
-        uint256 ownerBalanceBefore = owner.balance;
-        uint256 feeRecipientBalanceBefore = feeRecipient.balance;
+        uint256 end = start + 3600;
+        uint256 cost = 3600 * 1 gwei; 
+        uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
-        tenPercentManager.rent{value: total}(address(nft), tokenId, start, end);
+        tenPercentManager.rent{value: total}(address(nft), 1, start, end);
 
-        // Warp to after rental expires
         vm.warp(end + 1);
 
         vm.prank(renter);
-        tenPercentManager.finalize(1, address(nft), tokenId);
+        tenPercentManager.finalize(1);
 
-        // Check that 10% went to fee recipient and 90% to owner
-        uint256 expectedFee = cost * 1000 / 10000; // 10% fee
+        // Check balances in Escrow
+        // 10% fee
+        uint256 expectedFee = cost * 1000 / 10000; 
         uint256 expectedOwnerAmount = cost - expectedFee;
+
+        Escrow esc = tenPercentManager.escrow();
+
+        assertEq(esc.userBalances(owner), expectedOwnerAmount);
+        assertEq(esc.userBalances(feeRecipient), expectedFee);
         
-        assertEq(owner.balance, ownerBalanceBefore + expectedOwnerAmount);
-        assertEq(feeRecipient.balance, feeRecipientBalanceBefore + expectedFee);
+        assertEq(esc.userBalances(renter), 0.1 ether);
     }
-    
+
     function testProtocolFeeWith0Percent() public {
-        // Create RentalManager with 0% fee (0 basis points)
-        address zeroFeeRecipient = makeAddr("zeroFeeRecipient");
-        RentalManager zeroPercentManager = new RentalManager(address(listingManager), zeroFeeRecipient, 0); // 0% fee
-        
         vm.prank(owner);
         nft.setMarketplace(address(zeroPercentManager));
 
-        vm.prank(owner);
-        nft.mint(owner, 2); // Use different tokenId
-
-        vm.prank(owner);
-        nft.setApprovalForAll(address(zeroPercentManager), true);
-
-        vm.prank(owner);
-        listingManager.createListing(address(nft), 2, uint256(1 ether) / 3600, 3600, 86400, 0.1 ether, bytes32(0)); // 1 eth/hour
-
         uint256 start = block.timestamp + 100;
-        uint256 end = start + 3600; // 1 hour rental
-        ListingManager.Listing memory listing = listingManager.getListing(address(nft), 2);
-        uint256 cost = 3600 * listing.pricePerSecond; // 1 ether for 1 hour
-        uint256 total = cost + listing.deposit;
-
-        // Record balances before
-        uint256 ownerBalanceBefore = owner.balance;
-        uint256 zeroFeeRecipientBalanceBefore = zeroFeeRecipient.balance;
+        uint256 end = start + 3600;
+        uint256 cost = 3600 * 1 gwei; 
+        uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
         zeroPercentManager.rent{value: total}(address(nft), 2, start, end);
 
-        // Warp to after rental expires
         vm.warp(end + 1);
 
         vm.prank(renter);
-        zeroPercentManager.finalize(1, address(nft), 2);
+        zeroPercentManager.finalize(1);
 
-        // Check that 0% went to fee recipient and 100% to owner
-        uint256 expectedFee = cost * 0 / 10000; // 0% fee
-        uint256 expectedOwnerAmount = cost - expectedFee;
-        
-        assertEq(owner.balance, ownerBalanceBefore + expectedOwnerAmount); // Should receive full amount
-        assertEq(zeroFeeRecipient.balance, zeroFeeRecipientBalanceBefore + expectedFee); // Should receive nothing
+        uint256 expectedFee = 0;
+        uint256 expectedOwnerAmount = cost;
+
+        Escrow esc = zeroPercentManager.escrow();
+
+        assertEq(esc.userBalances(owner), expectedOwnerAmount);
+        assertEq(esc.userBalances(feeRecipient), expectedFee);
     }
-    
+
     function testProtocolFeeWith25Percent() public {
-        // Create RentalManager with 25% fee (2500 basis points)
-        address highFeeRecipient = makeAddr("highFeeRecipient");
-        RentalManager twentyFivePercentManager = new RentalManager(address(listingManager), highFeeRecipient, 2500); // 25% fee
-        
         vm.prank(owner);
         nft.setMarketplace(address(twentyFivePercentManager));
 
-        vm.prank(owner);
-        nft.mint(owner, 3); // Use different tokenId
-
-        vm.prank(owner);
-        nft.setApprovalForAll(address(twentyFivePercentManager), true);
-
-        vm.prank(owner);
-        listingManager.createListing(address(nft), 3, uint256(1 ether) / 3600, 3600, 86400, 0.1 ether, bytes32(0)); // 1 eth/hour
-
         uint256 start = block.timestamp + 100;
-        uint256 end = start + 3600; // 1 hour rental
-        ListingManager.Listing memory listing = listingManager.getListing(address(nft), 3);
-        uint256 cost = 3600 * listing.pricePerSecond; // 1 ether for 1 hour
-        uint256 total = cost + listing.deposit;
-
-        // Record balances before
-        uint256 ownerBalanceBefore = owner.balance;
-        uint256 highFeeRecipientBalanceBefore = highFeeRecipient.balance;
+        uint256 end = start + 3600;
+        uint256 cost = 3600 * 1 gwei; 
+        uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
         twentyFivePercentManager.rent{value: total}(address(nft), 3, start, end);
 
-        // Warp to after rental expires
         vm.warp(end + 1);
 
         vm.prank(renter);
-        twentyFivePercentManager.finalize(1, address(nft), 3);
+        twentyFivePercentManager.finalize(1);
 
-        // Check that 25% went to fee recipient and 75% to owner
-        uint256 expectedFee = cost * 2500 / 10000; // 25% fee
+        uint256 expectedFee = cost * 2500 / 10000; 
         uint256 expectedOwnerAmount = cost - expectedFee;
-        
-        assertEq(owner.balance, ownerBalanceBefore + expectedOwnerAmount);
-        assertEq(highFeeRecipient.balance, highFeeRecipientBalanceBefore + expectedFee);
-    }
-    
 
+        Escrow esc = twentyFivePercentManager.escrow();
+
+        assertEq(esc.userBalances(owner), expectedOwnerAmount);
+        assertEq(esc.userBalances(feeRecipient), expectedFee);
+    }
 }
