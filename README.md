@@ -1,89 +1,81 @@
 # NFT Rental & Sales Protocol
 
-A robust, secure, and gas-optimized EVM protocol for renting and selling ERC-721 assets. This system enables time-based access rights (via ERC-4907), secure escrow management, and atomic buy/sell operations, designed for high-scalability and security.
+An EVM protocol for renting and selling ERC-721 assets. This system implements time-based access rights via ERC-4907, escrow management, and atomic buy/sell operations.
 
-## 🚀 Key Features
+## Features
 
-### ⏳ Time-Based Rentals
-- **Precise Duration**: Rent NFTs for specific time windows with exact start/end timestamps.
-- **ERC-4907 Compliance**: Standardized user assignment (`userOf`) allows active renters to utilize assets (e.g., in games or gated communities) without ownership transfer.
-- **Append-Only Scheduling**: Optimized O(1) scheduling algorithm prevents gas limit issues (DoS) regardless of historical rental volume.
+### Time-Based Rentals
+- **Fixed Duration**: Rentals have explicit start and end timestamps.
+- **ERC-4907 Implementation**: Uses the `userOf` standard to assign usage rights without transferring ownership.
+- **O(1) Scheduling**: Uses mapping-based lookups to prevent gas loops during rental checks.
 
-### 💰 Sales & Marketplace
-- **Fixed-Price Listing**: Sell NFTs atomically with `SalesManager`.
-- **Rental Protection**: Active rentals block ownership transfers, ensuring renters retain access for their paid duration.
-- **Atomic Swaps**: Secure exchange of assets and Rentable721 tokens.
+### Sales & Marketplace
+- **Atomic Sales**: `SalesManager` enables fixed-price NFT sales.
+- **Rental Constraints**: Active rentals prevent ownership transfers until the rental period expires.
+- **Pull Payments**: All value transfers use a withdraw pattern.
 
-### 🔒 Security First
-- **Pull-Payment Pattern**: All fund withdrawals use the "Pull" pattern to prevent reentrancy and locking attacks.
-- **Reentrancy Protection**: Critical financial functions are guarded with `ReentrancyGuard`.
-- **DoS Prevention**: Unbounded loops have been removed in favor of O(1) mappings and state tracking.
+### Security Architecture
+- **Pull-Payment Pattern**: Funds are stored in `Escrow` and only moved upon explicit user withdrawal.
+- **Reentrancy Protection**: `ReentrancyGuard` is applied to all state-changing financial functions.
+- **State Limits**: Array iterations are replaced with constant-time operations to avoid Denial of Service.
 
-### ⚙️ Protocol Management
-- **Configurable Fees**: Protocol admins can adjust fee rates (basis points) and recipients.
-- **Royalty Support**: ERC-2981 compatibility ensures creators earn from secondary market activity.
+### Protocol Management
+- **Protocol Fees**: Admin-configurable fee basis points on rental transactions.
+- **Royalties**: Supports ERC-2981 for secondary sale royalties.
 
 ---
 
-## �️ Architecture
+## Architecture
 
-### Core Contracts
+### Contracts
 
 1.  **`Rentable721.sol`**
-    -   An ERC-721 token implementing ERC-4907.
-    -   Manages `userOf` roles for renters.
-    -   Enforces transfer restrictions during active rental periods.
+    -   ERC-721 token with ERC-4907 extension.
+    -   Overrides `transferFrom` to block transfers of rented assets.
 
 2.  **`RentalManager.sol`**
-    -   The core engine for rental logic.
-    -   Handles `rent()`, `checkIn()`, and `finalize()` operations.
-    -   Uses an `Escrow` contract to hold funds securely until rental completion.
+    -   Entry point for `rent` and `checkIn` transactions.
+    -   Validates availability and calculates costs.
+    -   Routes funds to `Escrow`.
 
 3.  **`SalesManager.sol`**
-    -   Facilitates buy/sell operations.
-    -   Ensures sales respect active rental constraints.
+    -   Entry point for `list` and `buy` transaction.
+    -   Validates ownership and rental status before execution.
 
 4.  **`Escrow.sol`**
-    -   Holds rental deposits and payments.
-    -   Distributes payouts to owners, protocol, and renters (refunds) upon finalization.
-    -   Implements `withdraw()` for users to claim earnings.
+    -   Custody contract for ETH.
+    -   Maps user balances for withdrawal.
 
 5.  **`ListingManager.sol`**
-    -   Stores listing parameters (price, min/max duration, deposits).
+    -   Data storage for listing configurations (price, duration limits).
 
 ---
 
-## 🛠️ Development & Usage
+## Usage
 
 ### Prerequisites
--   [Foundry](https://book.getfoundry.sh/getting-started/installation) (Forge, Anvil, Cast)
+-   Foundry
 
 ### Build
-Compile the smart contracts:
 ```bash
 forge build
 ```
 
 ### Test
-Run the comprehensive test suite (Unit + Integration):
 ```bash
 forge test
 ```
-*Current Status: 47/47 Tests Passed*
 
-### CLI Demonstration
-Simulate a full lifecycle (Mint -> List -> Rent -> CheckIn -> Finalize -> Sell -> Buy) on a local Anvil chain:
+### Simulation
+Run the local deployment script to verify the lifecycle (Mint -> Rent -> Sell):
 ```bash
 forge script script/Demo.s.sol
 ```
 
 ### Deployment
-To deploy to a live network (e.g., Base Sepolia), use `forge script` with your RPC URL and Private Key:
 ```bash
-forge script script/Demo.s.sol --rpc-url <YOUR_RPC_URL> --private-key <YOUR_PRIVATE_KEY> --broadcast
+forge script script/Demo.s.sol --rpc-url <RPC_URL> --private-key <KEY> --broadcast
 ```
 
----
-
-## 📄 License
+## License
 MIT
