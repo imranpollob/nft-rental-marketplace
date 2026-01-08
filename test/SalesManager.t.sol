@@ -15,7 +15,7 @@ contract SalesManagerTest is Test {
     function setUp() public {
         owner = makeAddr("owner");
         buyer = makeAddr("buyer");
-        
+
         vm.prank(owner);
         nft = new Rentable721();
         salesManager = new SalesManager();
@@ -41,18 +41,18 @@ contract SalesManagerTest is Test {
         salesManager.buy{value: 1 ether}(address(nft), tokenId);
 
         assertEq(nft.ownerOf(tokenId), buyer);
-        
+
         // check balance of seller
         assertEq(salesManager.balances(owner), 1 ether);
     }
 
     function testWithdraw() public {
         testListAndBuy(); // Sets up a sale and balance
-        
+
         uint256 preBalance = owner.balance;
         vm.prank(owner);
         salesManager.withdraw();
-        
+
         assertEq(owner.balance, preBalance + 1 ether);
         assertEq(salesManager.balances(owner), 0);
     }
@@ -60,10 +60,10 @@ contract SalesManagerTest is Test {
     function testCancelSale() public {
         vm.prank(owner);
         salesManager.listForSale(address(nft), tokenId, 1 ether);
-        
+
         vm.prank(owner);
         salesManager.cancelSale(address(nft), tokenId);
-        
+
         (,, bool active) = salesManager.sales(address(nft), tokenId);
         assertFalse(active);
     }

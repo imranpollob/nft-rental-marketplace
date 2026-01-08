@@ -1,200 +1,89 @@
-# NFT Rental Marketplace
+# NFT Rental & Sales Protocol
 
-A comprehensive full-stack NFT rental marketplace built with Solidity, Foundry, Next.js, and TypeScript. This platform enables NFT owners to list their assets for time-based rentals while providing renters with temporary access to exclusive digital assets.
+A robust, secure, and gas-optimized EVM protocol for renting and selling ERC-721 assets. This system enables time-based access rights (via ERC-4907), secure escrow management, and atomic buy/sell operations, designed for high-scalability and security.
 
----
+## 🚀 Key Features
 
-## 🚀 Features
+### ⏳ Time-Based Rentals
+- **Precise Duration**: Rent NFTs for specific time windows with exact start/end timestamps.
+- **ERC-4907 Compliance**: Standardized user assignment (`userOf`) allows active renters to utilize assets (e.g., in games or gated communities) without ownership transfer.
+- **Append-Only Scheduling**: Optimized O(1) scheduling algorithm prevents gas limit issues (DoS) regardless of historical rental volume.
 
-### Core Rental System
-- **Time-based Rentals**: Rent NFTs for specific durations with precise start/end times
-- **Conflict Prevention**: Advanced overlap detection prevents double-booking
-- **Secure Escrow**: Funds are held safely until rental completion
-- **Protocol Fees**: Configurable fee structure with automatic distribution
+### 💰 Sales & Marketplace
+- **Fixed-Price Listing**: Sell NFTs atomically with `SalesManager`.
+- **Rental Protection**: Active rentals block ownership transfers, ensuring renters retain access for their paid duration.
+- **Atomic Swaps**: Secure exchange of assets and Rentable721 tokens.
 
-### Dual-Role Participation
-- **Rent and Earn**: Users can simultaneously rent NFTs and earn by listing their own NFTs
-- **Mint-to-Earn**: NFT creators can mint new tokens and list them for rental income
-- **Flexible Marketplace**: Users participate as both renters and owners seamlessly
+### 🔒 Security First
+- **Pull-Payment Pattern**: All fund withdrawals use the "Pull" pattern to prevent reentrancy and locking attacks.
+- **Reentrancy Protection**: Critical financial functions are guarded with `ReentrancyGuard`.
+- **DoS Prevention**: Unbounded loops have been removed in favor of O(1) mappings and state tracking.
 
-### Royalty Support
-- **ERC-2981 Compatible**: Standard royalty implementation for secondary sales
-- **Configurable Rates**: Default 5% royalty to original creators
-
-### Advanced Security
-- **Transfer Protection**: Prevents unauthorized transfers during active rentals
-- **Role-based Access**: Marketplace-controlled user assignment for rentals
-- **Reentrancy Guards**: Protection against common smart contract vulnerabilities
-- **Ownership Validation**: Race condition prevention for listing changes
+### ⚙️ Protocol Management
+- **Configurable Fees**: Protocol admins can adjust fee rates (basis points) and recipients.
+- **Royalty Support**: ERC-2981 compatibility ensures creators earn from secondary market activity.
 
 ---
 
-## 🎨 Frontend Status
-
-**Note: Frontend is under active development. Smart contract functionality is complete and tested.**
-
----
-
-## 🏗️ Architecture
+## �️ Architecture
 
 ### Core Contracts
 
-#### Rentable721.sol
-- ERC-721 compliant NFT with rental extensions
-- ERC-4907 interface for user assignment
-- Transfer guards during active rentals
-- Royalty support via ERC-2981
+1.  **`Rentable721.sol`**
+    -   An ERC-721 token implementing ERC-4907.
+    -   Manages `userOf` roles for renters.
+    -   Enforces transfer restrictions during active rental periods.
 
-#### ListingManager.sol
-- Manages NFT listings with pricing and availability
-- Owner validation and listing lifecycle
-- Availability hash for external scheduling
+2.  **`RentalManager.sol`**
+    -   The core engine for rental logic.
+    -   Handles `rent()`, `checkIn()`, and `finalize()` operations.
+    -   Uses an `Escrow` contract to hold funds securely until rental completion.
 
-#### RentalManager.sol
-- Orchestrates rental transactions
-- Conflict checking and fund management
-- Integration with escrow system
-- Event emission for transparency
+3.  **`SalesManager.sol`**
+    -   Facilitates buy/sell operations.
+    -   Ensures sales respect active rental constraints.
 
-#### Escrow.sol
-- Secure fund holding during rentals
-- Protocol fee calculation and distribution
-- Release mechanisms for owners and renters
+4.  **`Escrow.sol`**
+    -   Holds rental deposits and payments.
+    -   Distributes payouts to owners, protocol, and renters (refunds) upon finalization.
+    -   Implements `withdraw()` for users to claim earnings.
+
+5.  **`ListingManager.sol`**
+    -   Stores listing parameters (price, min/max duration, deposits).
 
 ---
 
-### 🚀 Quick Development Setup
+## 🛠️ Development & Usage
 
-For a **new computer** or **fresh environment**, run the automated setup script:
+### Prerequisites
+-   [Foundry](https://book.getfoundry.sh/getting-started/installation) (Forge, Anvil, Cast)
 
+### Build
+Compile the smart contracts:
 ```bash
-# This will start Anvil, deploy all contracts, and configure the frontend
-./setup-dev.sh
+forge build
 ```
 
-This script will:
-- ✅ Check all dependencies (Foundry, Node.js, npm)
-- ✅ Start Anvil local Ethereum node
-- ✅ Deploy all smart contracts
-- ✅ Auto-generate `.env.local` with deployed addresses
-- ✅ Install frontend dependencies
-- ✅ Test the build
-
-### 🔄 Redeploy Contracts
-
-If you already have the environment set up and just want to redeploy contracts:
-
-```bash
-# Make sure Anvil is running
-anvil
-
-# In another terminal, redeploy contracts
-./redeploy.sh
-```
-
-### 📦 NPM Scripts
-
-The project includes convenient npm scripts for common tasks:
-
-```bash
-npm run setup        # Run the full development setup
-npm run redeploy     # Redeploy contracts only
-npm run test         # Run smart contract tests
-npm run build        # Build smart contracts
-npm run frontend:dev # Start frontend development server
-npm run frontend:build # Build frontend for production
-npm run frontend:install # Install frontend dependencies
-```
-
-
-## 🧪 Testing
-
-### Smart Contracts
-Run the comprehensive test suite:
+### Test
+Run the comprehensive test suite (Unit + Integration):
 ```bash
 forge test
 ```
+*Current Status: 47/47 Tests Passed*
 
-**Test Coverage:**
-- Unit tests for individual components
-- Integration tests for cross-contract interactions
-- Rental conflict prevention
-- Transfer safety mechanisms
-- Royalty calculations
-- Access control validation
-
-### Frontend Application
-Frontend is under development. Run the development server:
+### CLI Demonstration
+Simulate a full lifecycle (Mint -> List -> Rent -> CheckIn -> Finalize -> Sell -> Buy) on a local Anvil chain:
 ```bash
-cd frontend
-npm run dev
+forge script script/Demo.s.sol
 ```
 
-Build for production:
+### Deployment
+To deploy to a live network (e.g., Base Sepolia), use `forge script` with your RPC URL and Private Key:
 ```bash
-npm run build
+forge script script/Demo.s.sol --rpc-url <YOUR_RPC_URL> --private-key <YOUR_PRIVATE_KEY> --broadcast
 ```
 
-## 📖 Usage
+---
 
-### Local Development
-
-#### Option 1: Automated Setup (Recommended)
-```bash
-./setup-dev.sh
-```
-
-#### Option 2: Manual Setup
-Start a local Ethereum node:
-```bash
-anvil
-```
-
-Deploy contracts and update environment:
-```bash
-./redeploy.sh
-```
-
-Start the frontend development server:
-```bash
-cd frontend
-npm run dev
-```
-
-### Environment Configuration
-
-The deployment scripts automatically create/update `frontend/.env.local` with deployed contract addresses. For full functionality, add these additional variables:
-
-```bash
-# WalletConnect Project ID (get from https://cloud.walletconnect.com/)
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
-
-# Default chain (base or polygon)
-NEXT_PUBLIC_DEFAULT_CHAIN=base
-
-# RPC URLs
-NEXT_PUBLIC_BASE_RPC_URL=https://mainnet.base.org
-NEXT_PUBLIC_POLYGON_RPC_URL=https://polygon-rpc.com
-
-# Contract Addresses (Auto-generated by deployment script)
-NEXT_PUBLIC_RENTABLE_721_BASE=0x5fbdb2315678afecb367f032d93f642f64180aa3
-NEXT_PUBLIC_LISTING_MANAGER_BASE=0xe7f1725e7734ce288f8367e1bb143e90bb3f0512
-NEXT_PUBLIC_RENTAL_MANAGER_BASE=0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0
-NEXT_PUBLIC_ESCROW_BASE=0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9
-```
-
-
-#### User Flows
-
-**For NFT Owners:**
-1. Connect wallet and navigate to `/owner`
-2. Approve NFT for marketplace
-3. Create listing with pricing and duration constraints
-4. Manage active listings and view earnings
-
-**For NFT Renters:**
-1. Connect wallet and browse `/listings`
-2. View NFT details and select rental duration
-3. Complete rental transaction with secure escrow
-4. Access rented NFT during rental period
-5. View rental history in `/me`
+## 📄 License
+MIT

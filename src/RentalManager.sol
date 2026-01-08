@@ -29,7 +29,7 @@ contract RentalManager is ReentrancyGuard, Ownable {
 
     // O(1) lookup for rentals by ID
     mapping(uint256 => Rental) public rentalById;
-    
+
     // Track the end time of the last scheduled rental to enforce append-only scheduling (Conflict Prevention)
     mapping(address => mapping(uint256 => uint256)) public lastRentalEnd;
 
@@ -72,16 +72,16 @@ contract RentalManager is ReentrancyGuard, Ownable {
     function rent(address nft, uint256 tokenId, uint256 start, uint256 end) external payable nonReentrant {
         require(start < end, "RentalManager: invalid times");
         require(start >= block.timestamp, "RentalManager: start in past");
-        
+
         ListingManager.Listing memory listing = listingManager.getListing(nft, tokenId);
         require(listing.active, "RentalManager: not listed");
         require(listing.owner == IERC721(nft).ownerOf(tokenId), "RentalManager: ownership changed");
-        
+
         uint256 duration = end - start;
         require(
             duration >= listing.minDuration && duration <= listing.maxDuration, "RentalManager: duration out of range"
         );
-        
+
         // Conflict Check: Append-only strategy for O(1) complexity
         // New rental must start after the last scheduled rental ends
         require(start >= lastRentalEnd[nft][tokenId], "RentalManager: time conflict - must book after last rental");
@@ -113,13 +113,13 @@ contract RentalManager is ReentrancyGuard, Ownable {
 
         // If rental starts immediately (or close enough), auto-checkin
         if (start <= block.timestamp + 1 hours && start <= lastRentalEnd[nft][tokenId]) {
-             // We can try to set user properly.
-             // Note: If this is a future rental appended to the end, we can only set user if it's the CURRENT usage time.
-             // But we just checked `start >= block.timestamp`.
-             // If `start` is NOW, we set user.
-             if (start <= block.timestamp) {
-                 _checkIn(nextRentalId);
-             }
+            // We can try to set user properly.
+            // Note: If this is a future rental appended to the end, we can only set user if it's the CURRENT usage time.
+            // But we just checked `start >= block.timestamp`.
+            // If `start` is NOW, we set user.
+            if (start <= block.timestamp) {
+                _checkIn(nextRentalId);
+            }
         }
 
         nextRentalId++;
@@ -142,12 +142,12 @@ contract RentalManager is ReentrancyGuard, Ownable {
         require(msg.sender == rental.renter, "RentalManager: not renter");
         require(block.timestamp >= rental.start, "RentalManager: too early");
         require(block.timestamp < rental.end, "RentalManager: expired");
-        
-        // This fails if someone else is currently the user? 
-        // ERC4907 `setUser` ensures `user` is set. It overwrites. 
+
+        // This fails if someone else is currently the user?
+        // ERC4907 `setUser` ensures `user` is set. It overwrites.
         // We trust our `lastRentalEnd` logic to ensure no overlaps in *paid* time.
         // So safe to overwrite (previous rental should be over).
-        
+
         Rentable721(rental.nft).setUser(rental.tokenId, rental.renter, uint64(rental.end));
         emit CheckedIn(rentalId, block.timestamp);
     }
@@ -159,7 +159,7 @@ contract RentalManager is ReentrancyGuard, Ownable {
         require(block.timestamp >= rental.end, "RentalManager: not expired");
 
         ListingManager.Listing memory listing = listingManager.getListing(rental.nft, rental.tokenId);
-        
+
         uint256 fee = rental.amount * protocolFeeBps / 10000;
         uint256 toOwner = rental.amount - fee;
 

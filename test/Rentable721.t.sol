@@ -91,17 +91,17 @@ contract Rentable721Test is Test {
     function testSupportsInterface() public view {
         assertTrue(rentable.supportsInterface(type(IERC2981).interfaceId));
     }
-    
+
     function testRoyaltyDifferentAmounts() public view {
         // Test different sale prices result in correct royalty calculations
-        uint256 salePrice1 = 1000;     // Should result in 50 (5%)
-        uint256 salePrice2 = 20000;    // Should result in 1000 (5%)
-        uint256 salePrice3 = 100000;   // Should result in 5000 (5%)
-        
+        uint256 salePrice1 = 1000; // Should result in 50 (5%)
+        uint256 salePrice2 = 20000; // Should result in 1000 (5%)
+        uint256 salePrice3 = 100000; // Should result in 5000 (5%)
+
         (address receiver1, uint256 royaltyAmount1) = rentable.royaltyInfo(tokenId, salePrice1);
         (address receiver2, uint256 royaltyAmount2) = rentable.royaltyInfo(tokenId, salePrice2);
         (address receiver3, uint256 royaltyAmount3) = rentable.royaltyInfo(tokenId, salePrice3);
-        
+
         assertEq(receiver1, owner);
         assertEq(royaltyAmount1, salePrice1 * 500 / 10000); // 5%
         assertEq(receiver2, owner);
@@ -109,29 +109,29 @@ contract Rentable721Test is Test {
         assertEq(receiver3, owner);
         assertEq(royaltyAmount3, salePrice3 * 500 / 10000); // 5%
     }
-    
+
     function testRoyaltyForNonexistentToken() public {
         // Test what happens when calling royaltyInfo for nonexistent token
         vm.expectRevert("Rentable721: token does not exist");
-        rentable.royaltyInfo(999999, 10000);  // Non-existent token
+        rentable.royaltyInfo(999999, 10000); // Non-existent token
     }
-    
+
     function testRoyaltyChangesAfterTransfer() public {
         // Test that royalty receiver changes after token transfer
         vm.prank(owner);
         rentable.transferFrom(owner, other, tokenId);
-        
+
         uint256 salePrice = 10000;
         (address receiver, uint256 royaltyAmount) = rentable.royaltyInfo(tokenId, salePrice);
-        
-        assertEq(receiver, other);  // New owner should receive royalties
+
+        assertEq(receiver, other); // New owner should receive royalties
         assertEq(royaltyAmount, 500); // 5% of 10000
     }
-    
+
     function testRoyaltyWithZeroSalePrice() public view {
         // Test royalty calculation with 0 sale price
         (address receiver, uint256 royaltyAmount) = rentable.royaltyInfo(tokenId, 0);
-        
+
         assertEq(receiver, owner);
         assertEq(royaltyAmount, 0); // 5% of 0 should be 0
     }

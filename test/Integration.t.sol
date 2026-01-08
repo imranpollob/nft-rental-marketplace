@@ -67,7 +67,7 @@ contract IntegrationTest is Test {
         vm.warp(start);
         vm.prank(renter);
         rentalManager.checkIn(1);
-        
+
         assertEq(rentable.userOf(tokenId), renter);
 
         // Fast-forward to end
@@ -79,7 +79,7 @@ contract IntegrationTest is Test {
 
         // Check payouts: owner gets cost - fee, renter gets deposit
         uint256 fee = cost * 500 / 10000; // 5%
-        
+
         assertEq(escrow.userBalances(owner), cost - fee);
         assertEq(escrow.userBalances(renter), deposit);
         assertEq(escrow.userBalances(feeRecipient), fee);
@@ -124,7 +124,7 @@ contract IntegrationTest is Test {
         // Calculate exact cost
         uint256 start = block.timestamp + 100;
         uint256 end = start + 3700; // 1 hour
-        uint256 cost = 277777777777777 * 3600; 
+        uint256 cost = 277777777777777 * 3600;
         uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
@@ -139,11 +139,11 @@ contract IntegrationTest is Test {
         listingManager.createListing(address(rentable), tokenId, 277777777777777, 3600, 86400, 0.1 ether, bytes32(0));
 
         vm.prank(renter);
-        uint256 expectedCost = 277777777777777 * 3600; 
+        uint256 expectedCost = 277777777777777 * 3600;
         uint256 expectedTotal = expectedCost + 0.1 ether;
-        rentalManager.rent{value: expectedTotal}(
-            address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700
-        );
+        rentalManager.rent{
+            value: expectedTotal
+        }(address(rentable), tokenId, block.timestamp + 100, block.timestamp + 3700);
 
         // Funds in escrow (in rentalDeposits)
         assertEq(escrow.rentalDeposits(1), expectedTotal);

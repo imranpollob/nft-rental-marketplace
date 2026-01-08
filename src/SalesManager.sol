@@ -23,18 +23,14 @@ contract SalesManager is ReentrancyGuard {
     function listForSale(address nft, uint256 tokenId, uint256 price) external {
         require(IERC721(nft).ownerOf(tokenId) == msg.sender, "SalesManager: not owner");
         require(price > 0, "SalesManager: invalid price");
-        
-        // Ensure no active rental prevents transfer? 
+
+        // Ensure no active rental prevents transfer?
         // ERC721 `transferFrom` will fail if blocked, but good to check.
         // Rentable721 blocks transfer if `userOf` != 0.
         // We allow listing even if rented, but selling might fail?
         // Actually, listing is fine. Buying checks transferability.
 
-        sales[nft][tokenId] = Sale({
-            seller: msg.sender,
-            price: price,
-            active: true
-        });
+        sales[nft][tokenId] = Sale({seller: msg.sender, price: price, active: true});
 
         emit ListedForSale(nft, tokenId, msg.sender, price);
     }
@@ -43,7 +39,7 @@ contract SalesManager is ReentrancyGuard {
         Sale storage sale = sales[nft][tokenId];
         require(sale.active, "SalesManager: not listed");
         require(sale.seller == msg.sender, "SalesManager: not seller");
-        
+
         sale.active = false;
         emit SaleCanceled(nft, tokenId, msg.sender);
     }
@@ -70,10 +66,10 @@ contract SalesManager is ReentrancyGuard {
         uint256 amount = balances[msg.sender];
         require(amount > 0, "SalesManager: no funds");
         balances[msg.sender] = 0;
-        
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
+
+        (bool success,) = payable(msg.sender).call{value: amount}("");
         require(success, "SalesManager: transfer failed");
-        
+
         emit Withdrawn(msg.sender, amount);
     }
 }

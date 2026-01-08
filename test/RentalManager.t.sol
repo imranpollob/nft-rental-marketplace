@@ -24,7 +24,7 @@ contract RentalManagerTest is Test {
         vm.deal(address(this), 100 ether);
         vm.deal(renter, 100 ether);
         vm.deal(other, 100 ether);
-        
+
         vm.prank(owner);
         nft = new Rentable721();
         listingManager = new ListingManager();
@@ -40,11 +40,21 @@ contract RentalManagerTest is Test {
         nft.setApprovalForAll(address(rentalManager), true);
 
         vm.prank(owner);
-        listingManager.createListing(address(nft), tokenId, uint256(1 ether) / 3600, 3600, 86400, 0.1 ether, bytes32(0)); 
+        listingManager.createListing(address(nft), tokenId, uint256(1 ether) / 3600, 3600, 86400, 0.1 ether, bytes32(0));
     }
 
     function _getRental(uint256 id) internal view returns (RentalManager.Rental memory) {
-        (uint256 _id, address _nft, uint256 _tokenId, address _renter, uint256 _start, uint256 _end, uint256 _amount, uint256 _deposit, bool _finalized) = rentalManager.rentalById(id);
+        (
+            uint256 _id,
+            address _nft,
+            uint256 _tokenId,
+            address _renter,
+            uint256 _start,
+            uint256 _end,
+            uint256 _amount,
+            uint256 _deposit,
+            bool _finalized
+        ) = rentalManager.rentalById(id);
         return RentalManager.Rental(_id, _nft, _tokenId, _renter, _start, _end, _amount, _deposit, _finalized);
     }
 
@@ -80,9 +90,9 @@ contract RentalManagerTest is Test {
         rentalManager.rent{value: 2 ether}(address(nft), tokenId, start1, end1);
 
         // Overlapping (Start before previous end)
-        uint256 start2 = start1 + 1800; 
+        uint256 start2 = start1 + 1800;
         uint256 end2 = end1 + 1800;
-        
+
         vm.prank(other);
         vm.expectRevert("RentalManager: time conflict - must book after last rental");
         rentalManager.rent{value: 2 ether}(address(nft), tokenId, start2, end2);
@@ -97,7 +107,7 @@ contract RentalManagerTest is Test {
         // Non-overlapping (Start after previous end)
         uint256 start2 = end1; // Can begin exactly when last ends
         uint256 end2 = start2 + 3600;
-        
+
         vm.prank(other);
         rentalManager.rent{value: 2 ether}(address(nft), tokenId, start2, end2);
 
@@ -117,7 +127,7 @@ contract RentalManagerTest is Test {
 
         vm.warp(end + 1);
 
-        vm.prank(other); 
+        vm.prank(other);
         rentalManager.finalize(1);
 
         RentalManager.Rental memory r = _getRental(1);
@@ -145,7 +155,7 @@ contract RentalManagerTest is Test {
         vm.expectRevert("RentalManager: invalid times");
         rentalManager.rent{value: 2 ether}(address(nft), tokenId, block.timestamp + 200, block.timestamp + 100);
     }
-    
+
     function testFinalizeBeforeExpiry() public {
         uint256 start = block.timestamp + 100;
         uint256 end = start + 3600;
@@ -168,7 +178,7 @@ contract RentalManagerTest is Test {
     function testCheckIn() public {
         uint256 start = block.timestamp + 1000;
         uint256 end = start + 3600;
-        
+
         vm.prank(renter);
         rentalManager.rent{value: 2 ether}(address(nft), tokenId, start, end);
 

@@ -39,12 +39,12 @@ contract Escrow is ReentrancyGuard {
     function withdraw() external nonReentrant {
         uint256 amount = userBalances[msg.sender];
         require(amount > 0, "Escrow: no funds to withdraw");
-        
+
         userBalances[msg.sender] = 0;
-        
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
+
+        (bool success,) = payable(msg.sender).call{value: amount}("");
         require(success, "Escrow: transfer failed");
-        
+
         emit Withdrawn(msg.sender, amount);
     }
 }

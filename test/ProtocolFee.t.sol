@@ -43,7 +43,7 @@ contract ProtocolFeeTest is Test {
         nft.mint(owner, 2);
         vm.prank(owner);
         nft.mint(owner, 3);
-        
+
         // Approvals
         vm.prank(owner);
         nft.setApprovalForAll(address(tenPercentManager), true);
@@ -61,7 +61,7 @@ contract ProtocolFeeTest is Test {
         // Ah, `Rentable721` only allows ONE marketplace address.
         // So for these tests we might need separate NFT contracts or re-set marketplace in each test function?
         // Or just set it to the one we are testing.
-        
+
         vm.prank(owner);
         listingManager.createListing(address(nft), 1, 1 gwei, 3600, 86400, 0.1 ether, bytes32(0));
         vm.prank(owner);
@@ -76,7 +76,7 @@ contract ProtocolFeeTest is Test {
 
         uint256 start = block.timestamp + 100;
         uint256 end = start + 3600;
-        uint256 cost = 3600 * 1 gwei; 
+        uint256 cost = 3600 * 1 gwei;
         uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
@@ -89,14 +89,14 @@ contract ProtocolFeeTest is Test {
 
         // Check balances in Escrow
         // 10% fee
-        uint256 expectedFee = cost * 1000 / 10000; 
+        uint256 expectedFee = cost * 1000 / 10000;
         uint256 expectedOwnerAmount = cost - expectedFee;
 
         Escrow esc = tenPercentManager.escrow();
 
         assertEq(esc.userBalances(owner), expectedOwnerAmount);
         assertEq(esc.userBalances(feeRecipient), expectedFee);
-        
+
         assertEq(esc.userBalances(renter), 0.1 ether);
     }
 
@@ -106,7 +106,7 @@ contract ProtocolFeeTest is Test {
 
         uint256 start = block.timestamp + 100;
         uint256 end = start + 3600;
-        uint256 cost = 3600 * 1 gwei; 
+        uint256 cost = 3600 * 1 gwei;
         uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
@@ -132,7 +132,7 @@ contract ProtocolFeeTest is Test {
 
         uint256 start = block.timestamp + 100;
         uint256 end = start + 3600;
-        uint256 cost = 3600 * 1 gwei; 
+        uint256 cost = 3600 * 1 gwei;
         uint256 total = cost + 0.1 ether;
 
         vm.prank(renter);
@@ -143,7 +143,7 @@ contract ProtocolFeeTest is Test {
         vm.prank(renter);
         twentyFivePercentManager.finalize(1);
 
-        uint256 expectedFee = cost * 2500 / 10000; 
+        uint256 expectedFee = cost * 2500 / 10000;
         uint256 expectedOwnerAmount = cost - expectedFee;
 
         Escrow esc = twentyFivePercentManager.escrow();
